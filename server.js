@@ -5,7 +5,7 @@ const app = express();
 app.use(cors({ optionsSuccessStatus: 200 }));
 
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/views/index.html");
+  res.send("Timestamp Microservice API is running");
 });
 
 app.get("/api/", (req, res) => {
@@ -20,7 +20,7 @@ app.get("/api/:date", (req, res) => {
   let dateString = req.params.date;
   let date;
 
-  if (/\d{5,}/.test(dateString)) {
+  if (/^\d{5,}$/.test(dateString)) {
     date = new Date(parseInt(dateString));
   } else {
     date = new Date(dateString);
