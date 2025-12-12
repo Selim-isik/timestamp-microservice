@@ -11,7 +11,13 @@ app.use(express.json());
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.get("/", (req, res) => {
-  res.send("File Metadata Microservice is running");
+  res.send(`
+    <h1>File Metadata Microservice</h1>
+    <form method="POST" enctype="multipart/form-data" action="/api/fileanalyse">
+      <input type="file" name="upfile" />
+      <button type="submit">Upload</button>
+    </form>
+  `);
 });
 
 app.post("/api/fileanalyse", upload.single("upfile"), (req, res) => {
