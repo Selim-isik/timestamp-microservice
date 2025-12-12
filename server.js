@@ -1,39 +1,28 @@
 const express = require("express");
-const cors = require("cors");
 const app = express();
+const cors = require("cors");
 
 app.use(cors({ optionsSuccessStatus: 200 }));
 
 app.get("/", (req, res) => {
-  res.send("Timestamp Microservice API is running");
+  res.send(
+    "Request Header Parser Microservice API is running. Test endpoint: /api/whoami"
+  );
 });
 
-app.get("/api/", (req, res) => {
-  const date = new Date();
+app.get("/api/whoami", (req, res) => {
+  const forwardedIps = req.header("x-forwarded-for");
+  const clientIp = forwardedIps ? forwardedIps.split(",")[0] : req.ip;
+
+  const language = req.headers["accept-language"];
+
+  const software = req.headers["user-agent"];
+
   res.json({
-    unix: date.getTime(),
-    utc: date.toUTCString(),
+    ipaddress: clientIp,
+    language: language,
+    software: software,
   });
-});
-
-app.get("/api/:date", (req, res) => {
-  let dateString = req.params.date;
-  let date;
-
-  if (/^\d{5,}$/.test(dateString)) {
-    date = new Date(parseInt(dateString));
-  } else {
-    date = new Date(dateString);
-  }
-
-  if (date.toString() === "Invalid Date") {
-    res.json({ error: "Invalid Date" });
-  } else {
-    res.json({
-      unix: date.getTime(),
-      utc: date.toUTCString(),
-    });
-  }
 });
 
 const port = process.env.PORT || 3000;
