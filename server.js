@@ -20,8 +20,12 @@ app.get("/api/:date", (req, res) => {
   let dateString = req.params.date;
   let date;
 
-  if (/^\d{5,}$/.test(dateString)) {
-    date = new Date(parseInt(dateString));
+  if (!isNaN(dateString)) {
+    if (dateString.length === 13) {
+      date = new Date(parseInt(dateString));
+    } else {
+      date = new Date(parseInt(dateString) * 1000);
+    }
   } else {
     date = new Date(dateString);
   }
@@ -38,5 +42,5 @@ app.get("/api/:date", (req, res) => {
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log("Sunucu şurada çalışıyor: http://localhost:" + port);
+  console.log(`Server running on port ${port}`);
 });
