@@ -3,6 +3,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 require("dotenv").config();
+
 const app = express();
 
 app.use(cors({ optionsSuccessStatus: 200 }));
@@ -36,7 +37,7 @@ app.post("/api/users", async (req, res) => {
     res.json({ username: savedUser.username, _id: savedUser._id });
   } catch (err) {
     if (err.code === 11000)
-      return res.status(400).json({ error: "Username already taken" });
+      return res.json({ username: req.body.username, _id: "taken" });
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -54,21 +55,26 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
   const userId = req.params._id;
   const { description, duration, date } = req.body;
   const dateObj = date ? new Date(date) : new Date();
+
   if (dateObj.toString() === "Invalid Date")
     return res.json({ error: "Invalid Date format" });
+
   try {
     const user = await User.findById(userId);
     if (!user) return res.json({ error: "User not found" });
+
     const newExercise = {
       description,
       duration: parseInt(duration),
       date: dateObj,
     };
+
     user.log.push(newExercise);
-    const savedUser = await user.save();
+    await user.save();
+
     res.json({
-      _id: savedUser._id,
-      username: savedUser.username,
+      _id: user._id,
+      username: user.username,
       date: dateObj.toDateString(),
       duration: newExercise.duration,
       description: newExercise.description,
@@ -81,19 +87,24 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
 app.get("/api/users/:_id/logs", async (req, res) => {
   const userId = req.params._id;
   const { from, to, limit } = req.query;
+
   try {
     const user = await User.findById(userId);
     if (!user) return res.json({ error: "User not found" });
+
     let filteredLog = user.log;
+
     if (from)
       filteredLog = filteredLog.filter((ex) => ex.date >= new Date(from));
     if (to) filteredLog = filteredLog.filter((ex) => ex.date <= new Date(to));
     if (limit) filteredLog = filteredLog.slice(0, parseInt(limit));
+
     const finalLog = filteredLog.map((ex) => ({
       description: ex.description,
       duration: ex.duration,
       date: ex.date.toDateString(),
     }));
+
     res.json({
       username: user.username,
       count: finalLog.length,
