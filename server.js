@@ -1,17 +1,15 @@
 const express = require("express");
 const cors = require("cors");
+const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const app = express();
 require("dotenv").config();
-app.use(cors());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+const app = express();
+
+app.use(cors({ optionsSuccessStatus: 200 }));
+app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static("public"));
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+mongoose.connect(process.env.MONGO_URI);
 
 const exerciseSchema = new mongoose.Schema({
   description: { type: String, required: true },
@@ -31,8 +29,9 @@ app.get("/", (req, res) => {
 });
 
 app.post("/api/users", async (req, res) => {
+  const { username } = req.body;
   try {
-    const newUser = new User({ username: req.body.username });
+    const newUser = new User({ username });
     const savedUser = await newUser.save();
     res.json({ username: savedUser.username, _id: savedUser._id });
   } catch (err) {
@@ -43,53 +42,68 @@ app.post("/api/users", async (req, res) => {
 });
 
 app.get("/api/users", async (req, res) => {
-  const users = await User.find({}, "username _id");
-  res.json(users);
+  try {
+    const users = await User.find({}, "username _id");
+    res.json(users);
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 app.post("/api/users/:_id/exercises", async (req, res) => {
+  const userId = req.params._id;
   const { description, duration, date } = req.body;
-  let dateObj = date ? new Date(date) : new Date();
+  const dateObj = date ? new Date(date) : new Date();
   if (dateObj.toString() === "Invalid Date")
-    return res.json({ error: "Invalid Date" });
-  const user = await User.findById(req.params._id);
-  if (!user) return res.json({ error: "User not found" });
-  const newExercise = {
-    description,
-    duration: parseInt(duration),
-    date: dateObj,
-  };
-  user.log.push(newExercise);
-  await user.save();
-  res.json({
-    _id: user._id,
-    username: user.username,
-    date: dateObj.toDateString(),
-    duration: newExercise.duration,
-    description: newExercise.description,
-  });
+    return res.json({ error: "Invalid Date format" });
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.json({ error: "User not found" });
+    const newExercise = {
+      description,
+      duration: parseInt(duration),
+      date: dateObj,
+    };
+    user.log.push(newExercise);
+    const savedUser = await user.save();
+    res.json({
+      _id: savedUser._id,
+      username: savedUser.username,
+      date: dateObj.toDateString(),
+      duration: newExercise.duration,
+      description: newExercise.description,
+    });
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 app.get("/api/users/:_id/logs", async (req, res) => {
+  const userId = req.params._id;
   const { from, to, limit } = req.query;
-  const user = await User.findById(req.params._id);
-  if (!user) return res.json({ error: "User not found" });
-  let log = user.log;
-  if (from) log = log.filter((e) => e.date >= new Date(from));
-  if (to) log = log.filter((e) => e.date <= new Date(to));
-  if (limit) log = log.slice(0, parseInt(limit));
-  const finalLog = log.map((e) => ({
-    description: e.description,
-    duration: e.duration,
-    date: e.date.toDateString(),
-  }));
-  res.json({
-    _id: user._id,
-    username: user.username,
-    count: finalLog.length,
-    log: finalLog,
-  });
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.json({ error: "User not found" });
+    let filteredLog = user.log;
+    if (from)
+      filteredLog = filteredLog.filter((ex) => ex.date >= new Date(from));
+    if (to) filteredLog = filteredLog.filter((ex) => ex.date <= new Date(to));
+    if (limit) filteredLog = filteredLog.slice(0, parseInt(limit));
+    const finalLog = filteredLog.map((ex) => ({
+      description: ex.description,
+      duration: ex.duration,
+      date: ex.date.toDateString(),
+    }));
+    res.json({
+      username: user.username,
+      count: finalLog.length,
+      _id: user._id,
+      log: finalLog,
+    });
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port);
+app.listen(port, () => console.log("Server running on port " + port));
